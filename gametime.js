@@ -50,8 +50,54 @@ const games = {
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 let state = { 
   history: [], // Track past decisions
-  records: []  // Track detailed history with timestamps
+  records: [], // Track detailed history with timestamps
+  cumulativeScores: {}, // Track cumulative scores per game
+  patterns: {}, // Track patterns of decisions
+  streakCounts: {} // Track consecutive decisions
 };
+
+// Initialize state from imported data
+function initializeStateFromRecords(records) {
+  state.records = records;
+  state.history = records.map(record => record.action);
+  
+  // Reset all tracking
+  state.cumulativeScores = {};
+  state.patterns = {};
+  state.streakCounts = {};
+  
+  // Process records in chronological order
+  records.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  
+  records.forEach(record => {
+    // Initialize game tracking if not exists
+    if (!state.cumulativeScores[record.game]) {
+      state.cumulativeScores[record.game] = 0;
+      state.patterns[record.game] = {};
+      state.streakCounts[record.game] = {};
+    }
+    
+    // Update cumulative score
+    state.cumulativeScores[record.game] += record.outcome;
+    
+    // Track patterns
+    const key = `${record.timeframe}:${record.action}`;
+    state.patterns[record.game][key] = (state.patterns[record.game][key] || 0) + 1;
+    
+    // Update streaks - reset if action changes
+    if (!state.streakCounts[record.game][key]) {
+      state.streakCounts[record.game][key] = 1;
+    } else {
+      // Only increment streak if it's the same action as the last record
+      const lastRecord = records[records.indexOf(record) - 1];
+      if (lastRecord && lastRecord.action === record.action && lastRecord.timeframe === record.timeframe) {
+        state.streakCounts[record.game][key]++;
+      } else {
+        state.streakCounts[record.game][key] = 1;
+      }
+    }
+  });
+}
 
 function displayWelcome() {
   console.log("\n=== Game Theory Life Decision Simulator ===");
@@ -109,9 +155,10 @@ async function handleImport() {
   try {
     const filename = 'sample_history.csv';
     const importedHistory = await importFromCSV(filename);
-    state.records = importedHistory;
-    state.history = importedHistory.map(record => record.action);
+    initializeStateFromRecords(importedHistory);
     console.log(`\nImported ${importedHistory.length} records from ${filename}`);
+    console.log("\nCurrent Statistics:");
+    displayStatistics();
   } catch (error) {
     console.error('\nError importing history:', error.message);
   }
@@ -135,19 +182,89 @@ function displayHistory() {
   mainMenu();
 }
 
+function displayStatistics() {
+  if (Object.keys(state.cumulativeScores).length === 0) {
+    console.log("\nNo statistics available yet. Play some games or import history to see statistics.");
+    return;
+  }
+
+  Object.entries(state.cumulativeScores).forEach(([game, score]) => {
+    console.log(`\n=== ${game.toUpperCase()} STATISTICS ===`);
+    console.log(`Cumulative Score: ${score}`);
+    
+    if (state.patterns[game] && Object.keys(state.patterns[game]).length > 0) {
+      console.log("\nDecision Patterns:");
+      Object.entries(state.patterns[game])
+        .sort((a, b) => b[1] - a[1])
+        .forEach(([key, count]) => {
+          const [timeframe, action] = key.split(':');
+          console.log(`  ${timeframe} - ${action}: ${count} times`);
+        });
+    }
+    
+    if (state.streakCounts[game] && Object.keys(state.streakCounts[game]).length > 0) {
+      console.log("\nCurrent Streaks:");
+      Object.entries(state.streakCounts[game])
+        .sort((a, b) => b[1] - a[1])
+        .forEach(([key, streak]) => {
+          const [timeframe, action] = key.split(':');
+          console.log(`  ${timeframe} - ${action}: ${streak} in a row`);
+        });
+    }
+
+    // Add summary statistics
+    const gameRecords = state.records.filter(record => record.game === game);
+    if (gameRecords.length > 0) {
+      const totalDecisions = gameRecords.length;
+      const averageScore = score / totalDecisions;
+      console.log(`\nSummary:`);
+      console.log(`  Total Decisions: ${totalDecisions}`);
+      console.log(`  Average Score: ${averageScore.toFixed(2)}`);
+    }
+  });
+}
+
 function runGame(gameName) {
   console.log(`\n=== ${gameName.toUpperCase()} ===`);
 
-  rl.question(`Timeframe (${getGameTimeframes(gameName).join('/')}): `, (timeframe) => {
-    const actions = getGameActions(gameName, timeframe);
-    if (!actions.length) {
-      console.log("Invalid timeframe.");
+  const timeframes = getGameTimeframes(gameName);
+  console.log("\nAvailable Timeframes:");
+  timeframes.forEach((tf, index) => {
+    console.log(`${index + 1}. ${tf}`);
+  });
+
+  rl.question("\nSelect timeframe (number): ", (timeframeIndex) => {
+    const timeframe = timeframes[parseInt(timeframeIndex) - 1];
+    if (!timeframe) {
+      console.log("Invalid timeframe selection.");
       return runGame(gameName);
     }
 
-    console.log(`Actions: ${actions.map((a, i) => `\n${i}. ${a}`).join('')}`);
+    const actions = getGameActions(gameName, timeframe);
+    console.log("\nPossible Actions in this Timeframe:");
+    actions.forEach((action, index) => {
+      console.log(`${index + 1}. ${action}`);
+    });
+    console.log("\nNote: The strategy you select will choose from these actions based on its decision-making rules.");
 
-    rl.question(`Strategy (${getGameStrategies(gameName).join('/')}): `, (strategyName) => {
+    const strategies = getGameStrategies(gameName);
+    console.log("\nAvailable Decision-Making Strategies:");
+    strategies.forEach((strategy, index) => {
+      console.log(`${index + 1}. ${strategy}`);
+    });
+    console.log("\nEach strategy has different rules for choosing actions:");
+    console.log("- Minimax: Chooses actions to minimize maximum possible loss");
+    console.log("- Tit-for-Tat: Alternates actions based on previous outcomes");
+    console.log("- Nash Equilibrium: Chooses the optimal strategy where no better choice exists");
+
+    rl.question("\nSelect strategy (number): ", (strategyIndex) => {
+      const strategyName = strategies[parseInt(strategyIndex) - 1];
+      if (!strategyName) {
+        console.log("Invalid strategy selection.");
+        return runGame(gameName);
+      }
+
+      console.log(`\nApplying ${strategyName} strategy to make decision...`);
       const result = makeDecision(gameName, timeframe, strategyName, state.history);
       
       if (!result) {
@@ -158,9 +275,24 @@ function runGame(gameName) {
       state.history = result.history;
       state.records.push(result.record);
       
-      console.log(`\nDecision: ${result.action}`);
+      // Update cumulative score
+      state.cumulativeScores[gameName] = (state.cumulativeScores[gameName] || 0) + result.outcome;
+      
+      // Update patterns
+      const key = `${timeframe}:${result.action}`;
+      state.patterns[gameName] = state.patterns[gameName] || {};
+      state.patterns[gameName][key] = (state.patterns[gameName][key] || 0) + 1;
+      
+      // Update streaks
+      state.streakCounts[gameName] = state.streakCounts[gameName] || {};
+      state.streakCounts[gameName][key] = (state.streakCounts[gameName][key] || 0) + 1;
+      
+      console.log(`\nStrategy's Decision: ${result.action}`);
       console.log(`Outcome Payoff: ${result.outcome}`);
-      console.log(`History: ${state.history.map(d => actions[d]).join(' → ')}\n`);
+      console.log(`Decision History: ${state.history.map(d => actions[d]).join(' → ')}`);
+      console.log(`\nCurrent Statistics for ${gameName}:`);
+      console.log(`Cumulative Score: ${state.cumulativeScores[gameName]}`);
+      console.log(`Current Streak: ${state.streakCounts[gameName][key]} ${result.action} in a row\n`);
 
       rl.question("Another round? (y/n): ", (answer) => {
         if (answer.toLowerCase() === 'y') runGame(gameName);
@@ -171,16 +303,41 @@ function runGame(gameName) {
 }
 
 // ===== MAIN MENU ===== //
+function displayGameOptions() {
+  const games = getAvailableGames();
+  console.log("\nAvailable Games:");
+  games.forEach((game, index) => {
+    console.log(`${index + 1}. ${game}`);
+  });
+  console.log("\nOther Options:");
+  console.log("e. Export history");
+  console.log("i. Import history");
+  console.log("h. View history");
+  console.log("s. View statistics");
+  console.log("x. Exit");
+}
+
 function mainMenu() {
-  rl.question(`\nChoose a game (${getAvailableGames().join('/')}), or type 'export', 'import', 'history', or 'exit': `, async (input) => {
-    if (input === 'exit') rl.close();
-    else if (input === 'export') await handleExport();
-    else if (input === 'import') await handleImport();
-    else if (input === 'history') displayHistory();
-    else if (getAvailableGames().includes(input)) runGame(input);
-    else {
-      console.log("Invalid option. Try again.");
+  displayGameOptions();
+  rl.question("\nEnter your choice (number or letter): ", async (input) => {
+    const games = getAvailableGames();
+    
+    if (input === 'x') rl.close();
+    else if (input === 'e') await handleExport();
+    else if (input === 'i') await handleImport();
+    else if (input === 'h') displayHistory();
+    else if (input === 's') {
+      displayStatistics();
       mainMenu();
+    }
+    else {
+      const gameIndex = parseInt(input) - 1;
+      if (gameIndex >= 0 && gameIndex < games.length) {
+        runGame(games[gameIndex]);
+      } else {
+        console.log("Invalid option. Please try again.");
+        mainMenu();
+      }
     }
   });
 }
