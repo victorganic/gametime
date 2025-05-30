@@ -1,0 +1,20 @@
+{
+  "name": "gametime",
+  "version": "1.0.0",
+  "description": "Life is not a game ... but you can act like it is.",
+  "main": "gametime.js",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "dependencies": {
+    "csv-parse": "^5.6.0",
+    "csv-stringify": "^6.5.2"
+  }
+}

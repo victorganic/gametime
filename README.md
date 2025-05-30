@@ -2,7 +2,7 @@
 Life is not a game ... but you can act like it is.
 
 ## Overview
-Here’s a **REPL (Read-Eval-Print Loop) script in JavaScript** that helps apply **game theory principles** to life tasks/goals across different timeframes (minute-to-minute up to month-to-month). It models tasks as "games" where you strategize against constraints (time, resources, opponents like procrastination).
+Here's a **REPL (Read-Eval-Print Loop) script in JavaScript** that helps apply **game theory principles** to life tasks/goals across different timeframes (minute-to-minute up to month-to-month). It models tasks as "games" where you strategize against constraints (time, resources, opponents like procrastination).
 
 ---
 
@@ -21,7 +21,7 @@ A REPL-based JavaScript tool for applying game theory strategies to real-life de
 ## **Quick Start**
 1. **Run** (Node.js required):
    ```bash
-   node life_game.js
+   node gametime.js
    ```
 2. **Follow REPL prompts**:
    - Select a game (e.g., `foodDelivery`).
@@ -45,7 +45,7 @@ A REPL-based JavaScript tool for applying game theory strategies to real-life de
 ├── strategies/          # Strategy implementations
 │   ├── minimax.js       # Avoid worst-case outcomes
 │   └── titForTat.js     # React to past decisions
-└── life_game.js         # REPL core engine
+└── gametime.js         # REPL core engine
 ```
 
 ### **Core Modules**
@@ -87,7 +87,7 @@ A REPL-based JavaScript tool for applying game theory strategies to real-life de
      }
    };
    ```
-2. Import in `life_game.js`:
+2. Import in `gametime.js`:
    ```javascript
    const games = {
      ...require('./games/foodDelivery'),

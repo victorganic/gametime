@@ -1,0 +1,4 @@
+Game,Timeframe,Strategy,Action,Outcome,Timestamp
+foodDelivery,day,minimax,Cook Meal,5,2024-03-20T10:00:00Z
+foodDelivery,day,titForTat,Order Takeout,-2,2024-03-20T10:15:00Z
+productivity,day,nashEquilibrium,Deep Work,4,2024-03-20T11:00:00Z 
