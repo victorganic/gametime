@@ -224,6 +224,69 @@ function displayStatistics() {
   });
 }
 
+function displayStrategyInfo(strategyName) {
+  console.log(`\n=== ${strategyName.toUpperCase()} STRATEGY ===`);
+  
+  switch(strategyName.toLowerCase()) {
+    case 'minimax':
+      console.log("\nHow it works:");
+      console.log("1. For each possible action, identifies the worst possible outcome");
+      console.log("2. Chooses the action with the best 'worst-case' scenario");
+      console.log("3. Focuses on minimizing maximum possible loss");
+      console.log("\nExample:");
+      console.log("In the food delivery game (day timeframe):");
+      console.log("- 'Order Takeout' has outcomes [-5, -2]");
+      console.log("- 'Cook Meal' has outcomes [3, 5]");
+      console.log("Minimax would choose 'Cook Meal' because its worst outcome (3) is better than 'Order Takeout's' worst outcome (-5)");
+      break;
+      
+    case 'titfortat':
+      console.log("\nHow it works:");
+      console.log("1. Starts with a cooperative action");
+      console.log("2. Repeats the opponent's last action in subsequent rounds");
+      console.log("3. Adapts strategy based on previous outcomes");
+      console.log("\nExample:");
+      console.log("In the food delivery game:");
+      console.log("- If last decision was 'Order Takeout' with a negative outcome");
+      console.log("- Next decision would be 'Cook Meal' to try a different approach");
+      console.log("- If 'Cook Meal' was successful, might stick with it");
+      break;
+      
+    case 'nashequilibrium':
+      console.log("\nHow it works:");
+      console.log("1. Finds the optimal strategy where no player can benefit by changing their choice");
+      console.log("2. Considers all possible outcomes and their probabilities");
+      console.log("3. Chooses the most stable strategy");
+      console.log("\nExample:");
+      console.log("In the food delivery game (month timeframe):");
+      console.log("- 'Subscribe to Service' has outcomes [-30, -10]");
+      console.log("- 'Cancel Subscriptions' has outcomes [50, 100]");
+      console.log("Nash Equilibrium would likely choose 'Cancel Subscriptions' as it dominates in both outcomes");
+      break;
+  }
+}
+
+function displayPayoffMatrix(gameName, timeframe) {
+  const game = games[gameName];
+  if (!game || !game.timeframes[timeframe]) {
+    console.log("\nInvalid game or timeframe.");
+    return;
+  }
+
+  const { actions, payoffs } = game.timeframes[timeframe];
+  
+  console.log(`\n=== PAYOFF MATRIX FOR ${gameName.toUpperCase()} (${timeframe}) ===`);
+  console.log("\nActions and their possible outcomes:");
+  
+  actions.forEach((action, i) => {
+    console.log(`\n${action}:`);
+    console.log(`  Outcome 1: ${payoffs[i][0]}`);
+    console.log(`  Outcome 2: ${payoffs[i][1]}`);
+    console.log(`  Best case: ${Math.max(...payoffs[i])}`);
+    console.log(`  Worst case: ${Math.min(...payoffs[i])}`);
+  });
+}
+
 function runGame(gameName) {
   console.log(`\n=== ${gameName.toUpperCase()} ===`);
 
@@ -247,22 +310,32 @@ function runGame(gameName) {
     });
     console.log("\nNote: The strategy you select will choose from these actions based on its decision-making rules.");
 
+    // Display payoff matrix for current timeframe
+    displayPayoffMatrix(gameName, timeframe);
+
     const strategies = getGameStrategies(gameName);
     console.log("\nAvailable Decision-Making Strategies:");
     strategies.forEach((strategy, index) => {
       console.log(`${index + 1}. ${strategy}`);
     });
-    console.log("\nEach strategy has different rules for choosing actions:");
-    console.log("- Minimax: Chooses actions to minimize maximum possible loss");
-    console.log("- Tit-for-Tat: Alternates actions based on previous outcomes");
-    console.log("- Nash Equilibrium: Chooses the optimal strategy where no better choice exists");
 
-    rl.question("\nSelect strategy (number): ", (strategyIndex) => {
-      const strategyName = strategies[parseInt(strategyIndex) - 1];
+    rl.question("\nSelect strategy (number) or 'i' for strategy info: ", (strategyInput) => {
+      if (strategyInput.toLowerCase() === 'i') {
+        strategies.forEach((strategy, index) => {
+          displayStrategyInfo(strategy);
+        });
+        return runGame(gameName);
+      }
+
+      const strategyIndex = parseInt(strategyInput) - 1;
+      const strategyName = strategies[strategyIndex];
       if (!strategyName) {
         console.log("Invalid strategy selection.");
         return runGame(gameName);
       }
+
+      // Display info for selected strategy
+      displayStrategyInfo(strategyName);
 
       console.log(`\nApplying ${strategyName} strategy to make decision...`);
       const result = makeDecision(gameName, timeframe, strategyName, state.history);
